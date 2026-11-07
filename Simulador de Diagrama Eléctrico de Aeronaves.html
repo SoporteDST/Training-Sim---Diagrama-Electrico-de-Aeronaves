@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Eléctrico de Aeronave</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d10;
+  --panel:#16191e;
+  --panel2:#1d2127;
+  --metal1:#5b636d;
+  --metal2:#2a2f36;
+  --text:#d6dde5;
+  --muted:#7f8a96;
+  --off:#3c434c;
+  --live:#1d6a3a;
+  --green:#2bf07a;
+  --amber:#ffb01f;
+  --red:#ff3b3b;
+  --cyan:#45d4ff;
+  --mono:'JetBrains Mono','Consolas','Courier New',monospace;
+  --sans:'Poppins','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans)}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse at 50% -10%, #1c2530 0%, transparent 60%),
+    repeating-linear-gradient(45deg, #0d0f12 0 6px, #0b0d10 6px 12px);
+  padding:16px;
+}
+.app{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- Paneles metálicos ---------- */
+.panel{
+  position:relative;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border-radius:14px;
+  padding:18px 18px 16px;
+  border:1px solid #0a0b0d;
+  box-shadow:
+    0 0 0 2px #2c323a,
+    0 0 0 4px #121418,
+    inset 0 1px 0 #3a414b,
+    inset 0 -2px 6px #00000080,
+    0 12px 30px #00000090;
+}
+.panel::before,.panel::after,
+.panel > .screw-b::before,.panel > .screw-b::after{
+  content:"";position:absolute;width:10px;height:10px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#9aa3ad,#3d434b 60%,#1c1f24);
+  box-shadow:inset 0 0 1px #000, 0 1px 1px #ffffff15;
+}
+.panel::before{top:8px;left:8px}
+.panel::after{top:8px;right:8px}
+.panel > .screw-b{position:absolute;inset:auto 0 0 0;height:0}
+.panel > .screw-b::before{bottom:8px;left:8px}
+.panel > .screw-b::after{bottom:8px;right:8px}
+.panel-title{
+  font-size:11px;letter-spacing:.22em;font-weight:600;color:var(--muted);
+  text-transform:uppercase;margin:0 14px 14px;display:flex;align-items:center;gap:10px
+}
+.panel-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#3a414b,transparent)}
+
+/* ---------- Encabezado ---------- */
+header.panel{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 28px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .logo{
+  width:42px;height:42px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#2a3038,#14171b);border:1px solid #3a414b;
+  color:var(--green);font-family:var(--mono);font-weight:700;font-size:13px;
+  text-shadow:0 0 8px var(--green)
+}
+.brand h1{font-size:18px;font-weight:600;letter-spacing:.04em}
+.brand p{font-size:12px;color:var(--muted)}
+.head-actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.08em;
+  color:var(--text);cursor:pointer;padding:9px 14px;border-radius:8px;
+  background:linear-gradient(180deg,#2d333b,#1a1e23);
+  border:1px solid #444c56;box-shadow:inset 0 1px 0 #ffffff12,0 2px 4px #0008;
+  transition:all .15s
+}
+.btn:hover{border-color:#6b7580}
+.btn:active{transform:translateY(1px)}
+.btn.on{color:var(--green);border-color:#2f7a4c;text-shadow:0 0 6px #2bf07a88}
+
+/* ---------- Layout principal ---------- */
+.main{display:grid;grid-template-columns:400px 1fr;gap:14px}
+@media (max-width:1100px){.main{grid-template-columns:1fr}}
+
+/* ---------- Interruptores tipo palanca ---------- */
+.switch-row{display:flex;justify-content:space-around;gap:10px;margin-bottom:18px}
+.tgl{
+  background:none;border:none;color:var(--text);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;font-family:var(--mono)
+}
+.tgl .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;
+  background:#0e1013;border:1px solid #333a43;padding:3px 8px;border-radius:4px}
+.tgl .plate{
+  width:62px;height:86px;border-radius:8px;position:relative;
+  background:linear-gradient(180deg,#262b32,#14171b);
+  border:1px solid #3c444e;box-shadow:inset 0 2px 6px #000a;
+}
+.tgl .plate .nut{
+  position:absolute;left:50%;top:50%;width:30px;height:30px;transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(circle at 35% 30%,#c4ccd4,#59616b 55%,#262a30);
+  box-shadow:0 2px 4px #000c
+}
+.tgl .lever{
+  position:absolute;left:50%;top:50%;width:12px;height:38px;margin-left:-6px;
+  border-radius:6px;transform-origin:50% 100%;
+  background:linear-gradient(90deg,#8d959f,#eef2f6 45%,#7a828c);
+  box-shadow:0 2px 3px #000c;
+  transform:translateY(-4px) rotate(180deg);transition:transform .18s cubic-bezier(.5,1.8,.5,1)
+}
+.tgl .lever::after{content:"";position:absolute;top:-6px;left:-3px;width:18px;height:12px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#ffffff,#9ea6b0 60%,#5d646d)}
+.tgl.on .lever{transform:translateY(-38px) rotate(0deg)}
+.tgl .pos{font-size:10px;color:var(--muted);letter-spacing:.1em}
+.tgl.on .pos{color:var(--green);text-shadow:0 0 6px #2bf07a99}
+.tgl .guard-txt{font-size:9px;color:#5c6670}
+
+/* ---------- Llave rotativa ---------- */
+.key-area{display:flex;flex-direction:column;align-items:center;gap:10px;margin:6px 0 18px}
+.keywrap{position:relative;width:260px;height:250px;user-select:none}
+.dial-face{
+  position:absolute;left:50%;top:132px;width:200px;height:200px;transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 50%, #1b1f24 0 58%, transparent 59%),
+    conic-gradient(from 0deg,#2e343c,#4b535d,#2e343c,#20252b,#2e343c);
+  box-shadow:0 0 0 3px #0d0f12,0 0 0 5px #3b424b,inset 0 0 20px #000;
+}
+.start-arc{position:absolute;left:0;top:0;width:260px;height:250px;pointer-events:none}
+.klabel{
+  position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:.06em;color:#9aa4ae;cursor:pointer;padding:3px 6px;border-radius:4px;transition:all .15s;
+  background:#0f1215;border:1px solid #2b3138
+}
+.klabel:hover{color:#fff;border-color:#5b6570}
+.klabel.active{color:var(--green);border-color:#2f7a4c;text-shadow:0 0 8px #2bf07a}
+.klabel.start.active{color:var(--amber);border-color:#8a6214;text-shadow:0 0 8px var(--amber)}
+.knob{
+  position:absolute;left:50%;top:132px;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;
+  cursor:grab;
+  background:radial-gradient(circle at 38% 30%,#3a4049,#15181c 70%);
+  box-shadow:0 6px 14px #000c, inset 0 1px 2px #ffffff22, 0 0 0 2px #0b0d10;
+  transition:transform .32s cubic-bezier(.34,1.56,.64,1);
+}
+.knob:active{cursor:grabbing}
+.knob .blade{
+  position:absolute;left:50%;top:50%;width:34px;height:118px;margin:-59px 0 0 -17px;border-radius:10px 10px 14px 14px;
+  background:linear-gradient(90deg,#7e8792,#e8edf2 40%,#b4bcc5 60%,#6f7782);
+  box-shadow:0 3px 6px #000b, inset 0 0 0 1px #ffffff30;
+}
+.knob .blade::before{ /* marcador */
+  content:"";position:absolute;left:50%;top:8px;width:6px;height:22px;margin-left:-3px;border-radius:3px;
+  background:var(--green);box-shadow:0 0 8px var(--green)
+}
+.knob.start .blade::before{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.knob .cap{
+  position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#d8dee5,#5c646e);box-shadow:inset 0 0 2px #000
+}
+.key-btns{display:flex;gap:8px;align-items:center}
+.key-state{font-family:var(--mono);font-size:13px;min-width:110px;text-align:center;
+  background:#07090b;border:1px solid #2b3138;border-radius:6px;padding:6px 10px;color:var(--green);
+  text-shadow:0 0 6px #2bf07a88}
+.key-state.start{color:var(--amber);text-shadow:0 0 6px var(--amber)}
+.hint{font-size:10.5px;color:var(--muted);text-align:center;line-height:1.5;max-width:320px}
+
+/* ---------- LEDs ---------- */
+.leds{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:16px}
+.led-cell{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+  background:#0d0f12;border:1px solid #262c33;border-radius:7px;padding:8px 10px}
+.led{
+  flex:none;width:15px;height:15px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#4a4f55,#17191c 70%);
+  box-shadow:inset 0 0 3px #000, 0 0 0 2px #0a0b0d, 0 0 0 3px #3a4048;
+  transition:background .12s, box-shadow .12s
+}
+.led.g{background:radial-gradient(circle at 35% 30%,#e3ffec,#2bf07a 40%,#0b7a37);
+  box-shadow:0 0 0 2px #0a0b0d,0 0 0 3px #3a4048,0 0 6px #2bf07a,0 0 14px #2bf07aaa,0 0 26px #2bf07a55}
+.led.a{background:radial-gradient(circle at 35% 30%,#fff3d0,#ffb01f 40%,#9a5c00);
+  box-shadow:0 0 0 2px #0a0b0d,0 0 0 3px #3a4048,0 0 6px #ffb01f,0 0 14px #ffb01faa,0 0 26px #ffb01f55}
+.led.r{background:radial-gradient(circle at 35% 30%,#ffd6d6,#ff3b3b 40%,#8a0000);
+  box-shadow:0 0 0 2px #0a0b0d,0 0 0 3px #3a4048,0 0 6px #ff3b3b,0 0 14px #ff3b3baa,0 0 26px #ff3b3b55}
+.led.blink{animation:blink .5s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+
+/* ---------- Fallas ---------- */
+.faults{display:flex;flex-direction:column;gap:8px;font-size:12px}
+.fault{display:flex;align-items:center;gap:10px;cursor:pointer;background:#0d0f12;border:1px dashed #3a3226;
+  border-radius:7px;padding:8px 10px;color:#c9b38e}
+.fault input{accent-color:var(--red);width:15px;height:15px}
+
+/* ---------- Diagrama ---------- */
+.diagram-wrap{background:#07090b;border:1px solid #232930;border-radius:10px;padding:8px;
+  box-shadow:inset 0 0 30px #000;
+  background-image:linear-gradient(#ffffff06 1px,transparent 1px),linear-gradient(90deg,#ffffff06 1px,transparent 1px);
+  background-size:20px 20px}
+svg#schem{width:100%;height:auto;display:block}
+#schem text{font-family:var(--mono);fill:#9aa4ae;font-size:11px}
+#schem .t-title{fill:#c9d2db;font-weight:700;font-size:11.5px;letter-spacing:.05em}
+#schem .t-small{font-size:9.5px;fill:#6f7a86}
+.w{stroke:var(--off);stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.w.live{stroke:var(--live)}
+.w.on{stroke:var(--green);filter:url(#glow)}
+.w.hi{stroke:var(--amber);stroke-width:8;filter:url(#glowA)}
+.flow{stroke:transparent;stroke-width:2;fill:none;stroke-dasharray:5 15;stroke-linecap:round;pointer-events:none}
+.flow.on{stroke:#e2ffec;animation:flow .9s linear infinite}
+.flow.hi{stroke:#fff1c6;stroke-width:3;animation:flow .28s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-40}}
+.cmd{stroke:#39414a;stroke-width:2;fill:none;stroke-dasharray:6 5}
+.cmd.on{stroke:var(--amber);filter:url(#glowA);animation:flow 1s linear infinite}
+.mech{stroke:#3a4048;stroke-width:3;fill:none;stroke-dasharray:2 6;stroke-linecap:round}
+.mech.on{stroke:var(--green);animation:flow .5s linear infinite}
+.mech.hi{stroke:var(--amber);animation:flow .25s linear infinite}
+.node .box{fill:#12151a;stroke:#46505b;stroke-width:2;transition:all .2s}
+.node.on .box{stroke:var(--green);filter:url(#glow)}
+.node.hi .box{stroke:var(--amber);filter:url(#glowA)}
+.node.err .box{stroke:var(--red);filter:url(#glowR)}
+.bus{fill:var(--off);transition:fill .2s}
+.bus.on{fill:var(--green);filter:url(#glow)}
+.contact{stroke:#c9d2db;stroke-width:3;stroke-linecap:round;transition:all .12s}
+.contact.closed{stroke:var(--green)}
+.contact.hi{stroke:var(--amber)}
+.load .box{fill:#101317;stroke:#3a434d;stroke-width:1.5}
+.load.on .box{stroke:var(--green);fill:#0f2016}
+.load.on text{fill:var(--green)}
+.mag-txt{font-weight:700}
+
+/* ---------- Instrumentos ---------- */
+.inst-row{display:grid;grid-template-columns:200px 1fr;gap:14px;margin-top:14px}
+@media (max-width:640px){.inst-row{grid-template-columns:1fr}}
+.tach-box{display:flex;justify-content:center}
+svg.tach{width:190px;height:190px}
+.readouts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:start}
+@media (max-width:640px){.readouts{grid-template-columns:1fr 1fr}}
+.ro{background:#06080a;border:1px solid #262c33;border-radius:8px;padding:10px 12px;box-shadow:inset 0 0 14px #000}
+.ro .k{font-size:10px;letter-spacing:.18em;color:var(--muted);font-family:var(--mono)}
+.ro .v{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--green);text-shadow:0 0 10px #2bf07a77;margin-top:2px}
+.ro .v small{font-size:12px;color:var(--muted);text-shadow:none;margin-left:4px}
+.ro .v.warn{color:var(--amber);text-shadow:0 0 10px #ffb01f77}
+.ro .v.bad{color:var(--red);text-shadow:0 0 10px #ff3b3b77}
+.ro .v.dim{color:#3b444d;text-shadow:none}
+.anns{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:640px){.anns{grid-template-columns:1fr 1fr}}
+.ann{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-align:center;padding:9px 4px;
+  border-radius:5px;background:#111316;color:#3b4148;border:1px solid #23282e;transition:all .15s}
+.ann.r{background:#3a0909;color:#ff6b6b;border-color:#ff3b3b;box-shadow:0 0 12px #ff3b3b66;text-shadow:0 0 6px #ff3b3b}
+.ann.a{background:#3a2604;color:#ffc95a;border-color:#ffb01f;box-shadow:0 0 12px #ffb01f66;text-shadow:0 0 6px #ffb01f}
+.ann.g{background:#06301a;color:#6dffab;border-color:#2bf07a;box-shadow:0 0 12px #2bf07a55;text-shadow:0 0 6px #2bf07a}
+
+/* ---------- Consola ---------- */
+.console-head{display:flex;justify-content:space-between;align-items:center;margin:0 14px 10px}
+.console-head .panel-title{margin:0;flex:1}
+.console{
+  height:230px;overflow-y:auto;background:#030504;border:1px solid #1d2a22;border-radius:8px;padding:10px 14px;
+  font-family:var(--mono);font-size:12.5px;line-height:1.65;
+  box-shadow:inset 0 0 40px #000, inset 0 0 2px #2bf07a44;position:relative
+}
+.console::-webkit-scrollbar{width:8px}
+.console::-webkit-scrollbar-thumb{background:#1f3328;border-radius:4px}
+.ln{white-space:pre-wrap;word-break:break-word;animation:fadein .25s}
+@keyframes fadein{from{opacity:0;transform:translateX(-4px)}}
+.ln .ts{color:#3e5a49}
+.ln.info{color:#8fd8ff}
+.ln.ok{color:#5dff9c}
+.ln.warn{color:#ffc04a}
+.ln.err{color:#ff6767}
+.ln.hi{color:#ffd78a}
+.ln.sys{color:#8a97a3}
+.cursor{display:inline-block;width:8px;height:14px;background:#5dff9c;vertical-align:middle;animation:blink 1s steps(2,start) infinite}
+.kbd{font-family:var(--mono);font-size:10px;background:#0e1013;border:1px solid #333a43;border-radius:3px;padding:0 4px;color:#b7c0ca}
+
+/* ---------- Puntos de información ---------- */
+.info{
+  display:inline-grid;place-items:center;flex:none;width:16px;height:16px;border-radius:50%;margin-left:7px;vertical-align:middle;
+  font:italic 700 10px/1 Georgia,serif;letter-spacing:0;text-transform:none;text-shadow:none;
+  color:#d4f4ff;background:#123447;border:1px solid #45d4ff;cursor:pointer;
+  box-shadow:0 0 6px #45d4ff55;transition:transform .12s, box-shadow .12s;user-select:none
+}
+.info:hover,.info:focus-visible{transform:scale(1.25);box-shadow:0 0 12px #45d4ffcc;outline:none}
+.info.active{background:#45d4ff;color:#06141c}
+.led-cell .info{margin-left:auto}
+.ro .k{display:flex;align-items:center}
+.ann .info{width:14px;height:14px;margin-left:5px}
+.tach-box{position:relative}
+.tach-box .info{position:absolute;top:4px;left:4px;margin:0}
+.idot{cursor:pointer}
+.idot circle{fill:#123447;stroke:#45d4ff;stroke-width:1.5;transition:fill .12s}
+.idot:hover circle,.idot.active circle{fill:#1f6788;filter:url(#glow)}
+#schem .idot text{fill:#d4f4ff;font:italic 700 10px Georgia,serif;pointer-events:none}
+
+.pop{
+  position:fixed;z-index:100;width:min(360px,calc(100vw - 24px));
+  background:linear-gradient(180deg,#121920,#0b1015);color:var(--text);
+  border:1px solid #45d4ff77;border-radius:12px;padding:14px 16px 14px;
+  box-shadow:0 14px 40px #000c,0 0 0 1px #000,0 0 22px #45d4ff22;
+  font-size:12.8px;line-height:1.6
+}
+.pop.show{animation:popin .16s ease-out}
+@keyframes popin{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+.pop h4{font-size:14px;font-weight:600;color:#7fe3ff;margin:0 26px 8px 0;letter-spacing:.02em}
+.pop p{margin:0 0 8px;color:#c7d0d9}
+.pop b{color:#fff}
+.pop .sim{margin-top:6px;padding:8px 10px;border-left:3px solid var(--green);background:#0c1a12;border-radius:0 6px 6px 0;
+  font-size:12px;color:#bfe9cf}
+.pop .sim b{color:var(--green)}
+.pop .x{position:absolute;top:8px;right:10px;background:none;border:none;color:#7f8a96;font-size:20px;line-height:1;cursor:pointer}
+.pop .x:hover{color:#fff}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= ENCABEZADO ================= -->
+  <header class="panel">
+    <span class="screw-b"></span>
+    <div class="brand">
+      <div class="logo">28V</div>
+      <div>
+        <h1>Simulador de Sistema Eléctrico · Encendido y Buses</h1>
+        <p>Batería · Solenoides · Interruptor de magnetos/arranque · Main Bus · Avionics Bus</p>
+      </div>
+    </div>
+    <div class="head-actions">
+      <button class="btn on" id="btnAudio">♪ AUDIO ON</button>
+      <button class="btn" id="btnReset">⟲ RESET</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- ================= PANEL DE CONTROL ================= -->
+    <section class="panel">
+      <span class="screw-b"></span>
+      <div class="panel-title">Panel de control</div>
+
+      <div class="switch-row">
+        <button class="tgl" data-sw="bat" title="Atajo: B">
+          <span class="lbl">BAT<span class="info" data-g="bat" tabindex="0" role="button" aria-label="¿Qué es BAT?">i</span></span>
+          <span class="plate"><span class="nut"></span><span class="lever"></span></span>
+          <span class="pos">OFF</span>
+        </button>
+        <button class="tgl" data-sw="alt" title="Atajo: A">
+          <span class="lbl">ALT<span class="info" data-g="alt" tabindex="0" role="button" aria-label="¿Qué es ALT?">i</span></span>
+          <span class="plate"><span class="nut"></span><span class="lever"></span></span>
+          <span class="pos">OFF</span>
+        </button>
+        <button class="tgl" data-sw="av" title="Atajo: V">
+          <span class="lbl">AVIONICS<span class="info" data-g="av" tabindex="0" role="button" aria-label="¿Qué es AVIONICS?">i</span></span>
+          <span class="plate"><span class="nut"></span><span class="lever"></span></span>
+          <span class="pos">OFF</span>
+        </button>
+      </div>
+
+      <div class="key-area">
+        <div class="keywrap" id="keywrap">
+          <div class="dial-face"></div>
+          <svg class="start-arc" viewBox="0 0 260 250">
+            <path id="startArcPath" d="" stroke="#ffb01f" stroke-width="4" fill="none" stroke-linecap="round" opacity=".55"/>
+          </svg>
+          <div class="knob" id="knob"><div class="blade"></div><div class="cap"></div></div>
+        </div>
+        <div class="key-btns">
+          <button class="btn" id="keyPrev">◀</button>
+          <div class="key-state" id="keyState">OFF</div>
+          <button class="btn" id="keyNext">▶</button>
+          <span class="info" data-g="key" tabindex="0" role="button" aria-label="¿Qué es la llave de magnetos?">i</span>
+        </div>
+        <div class="hint">
+          Clic en la llave = avanzar · clic derecho = retroceder · rueda del ratón · teclas <span class="kbd">←</span><span class="kbd">→</span>.
+          START es momentáneo: regresa por resorte a BOTH.
+        </div>
+      </div>
+
+      <div class="panel-title">Indicadores de estado</div>
+      <div class="leds">
+        <div class="led-cell"><span class="led" id="led-batsol"></span>SOL. BATERÍA<span class="info" data-g="batsol" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-stsol"></span>SOL. ARRANQUE<span class="info" data-g="stsol" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-magl"></span>MAGNETO L<span class="info" data-g="mag" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-magr"></span>MAGNETO R<span class="info" data-g="mag" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-avm"></span>AV MASTER<span class="info" data-g="av" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-alt"></span>ALTERNADOR<span class="info" data-g="altgen" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-main"></span>MAIN BUS<span class="info" data-g="main" tabindex="0" role="button">i</span></div>
+        <div class="led-cell"><span class="led" id="led-avbus"></span>AVIONICS BUS<span class="info" data-g="avbus" tabindex="0" role="button">i</span></div>
+      </div>
+
+      <div class="panel-title">Inyección de fallas</div>
+      <div class="faults">
+        <label class="fault"><input type="checkbox" id="fLowBat"> Batería descargada (baja tensión de arranque)<span class="info" data-g="lowbat" tabindex="0" role="button" style="margin-left:auto">i</span></label>
+        <label class="fault"><input type="checkbox" id="fSol"> Contactos del solenoide de arranque abiertos<span class="info" data-g="solfail" tabindex="0" role="button" style="margin-left:auto">i</span></label>
+      </div>
+    </section>
+
+    <!-- ================= DIAGRAMA + INSTRUMENTOS ================= -->
+    <section class="panel">
+      <span class="screw-b"></span>
+      <div class="panel-title">Diagrama esquemático en tiempo real</div>
+      <div class="diagram-wrap">
+        <svg id="schem" viewBox="0 0 920 445" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glowA" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glowR" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- ===== CABLES ===== -->
+          <path class="w" data-w="bat"    d="M140,190 H210"/>
+          <path class="w" data-w="feed"   d="M320,190 H390"/>
+          <path class="w" data-w="st1"    d="M408,80 H480"/>
+          <path class="w" data-w="st2"    d="M590,80 H701"/>
+          <path class="w" data-w="av1"    d="M408,190 H480"/>
+          <path class="w" data-w="av2"    d="M590,190 H650"/>
+          <path class="w" data-w="ld1"    d="M666,162 H720"/>
+          <path class="w" data-w="ld2"    d="M666,202 H720"/>
+          <path class="w" data-w="ld3"    d="M666,242 H720"/>
+          <path class="w" data-w="ld4"    d="M666,282 H720"/>
+          <path class="w" data-w="alt"    d="M408,280 H490"/>
+          <path class="w" data-w="htl"    d="M302,368 H470"/>
+          <path class="w" data-w="htr"    d="M302,418 H470"/>
+          <path class="w" data-w="pl"     d="M160,368 H258"/>
+          <path class="w" data-w="pr"     d="M160,418 H258"/>
+
+          <!-- Comando START (bobina del solenoide) -->
+          <path class="cmd" id="cmdLine" d="M160,355 H180 V22 H535 V50"/>
+          <text x="190" y="16" class="t-small">CMD START → BOBINA SOL. ARRANQUE</text>
+
+          <!-- Enlaces mecánicos -->
+          <path class="mech" id="mechBendix" d="M769,80 H868 V392 H760"/>
+          <text x="874" y="240" class="t-small" transform="rotate(90 874 240)">BENDIX / PIÑÓN</text>
+          <path class="mech" id="mechEng" d="M580,392 H620"/>
+
+          <!-- ===== FUENTE ===== -->
+          <g class="node" id="n-bat">
+            <rect class="box" x="30" y="148" width="110" height="84" rx="8"/>
+            <line x1="62" y1="180" x2="62" y2="206" stroke="#c9d2db" stroke-width="3"/>
+            <line x1="72" y1="186" x2="72" y2="200" stroke="#c9d2db" stroke-width="5"/>
+            <line x1="82" y1="180" x2="82" y2="206" stroke="#c9d2db" stroke-width="3"/>
+            <line x1="92" y1="186" x2="92" y2="200" stroke="#c9d2db" stroke-width="5"/>
+            <text x="110" y="185" class="t-small">+</text>
+            <text x="85" y="166" text-anchor="middle" class="t-title">FUENTE</text>
+            <text x="85" y="224" text-anchor="middle" class="t-title">28V DC</text>
+          </g>
+          <!-- Masa de batería -->
+          <path d="M85,232 V250" stroke="#46505b" stroke-width="2"/>
+          <path d="M73,250 H97 M77,255 H93 M81,260 H89" stroke="#46505b" stroke-width="2"/>
+
+          <!-- ===== SOLENOIDE DE BATERÍA ===== -->
+          <g class="node" id="n-batsol">
+            <rect class="box" x="210" y="160" width="110" height="60" rx="6"/>
+            <circle cx="236" cy="200" r="3.5" fill="#c9d2db"/>
+            <circle cx="294" cy="200" r="3.5" fill="#c9d2db"/>
+            <line class="contact" id="c-batsol" x1="236" y1="200" x2="292" y2="184"/>
+            <text x="265" y="176" text-anchor="middle" class="t-title">SOL. BATERÍA</text>
+          </g>
+          <text x="265" y="238" text-anchor="middle" class="t-small">bobina ← BAT MASTER</text>
+
+          <!-- ===== MAIN BUS ===== -->
+          <rect class="bus" id="n-main" x="390" y="40" width="18" height="280" rx="3"/>
+          <text x="399" y="33" text-anchor="middle" class="t-title">MAIN BUS</text>
+
+          <!-- ===== SOLENOIDE DE ARRANQUE ===== -->
+          <g class="node" id="n-stsol">
+            <rect class="box" x="480" y="50" width="110" height="60" rx="6"/>
+            <circle cx="506" cy="92" r="3.5" fill="#c9d2db"/>
+            <circle cx="564" cy="92" r="3.5" fill="#c9d2db"/>
+            <line class="contact" id="c-stsol" x1="506" y1="92" x2="562" y2="76"/>
+            <text x="535" y="68" text-anchor="middle" class="t-title">SOL. ARRANQUE</text>
+          </g>
+
+          <!-- ===== MOTOR DE ARRANQUE ===== -->
+          <g class="node" id="n-stmot">
+            <circle class="box" cx="735" cy="80" r="34"/>
+            <g id="stRotor">
+              <line x1="735" y1="56" x2="735" y2="104" stroke="#7f8a96" stroke-width="3"/>
+              <line x1="711" y1="80" x2="759" y2="80" stroke="#7f8a96" stroke-width="3"/>
+              <line x1="718" y1="63" x2="752" y2="97" stroke="#59626c" stroke-width="2"/>
+              <line x1="752" y1="63" x2="718" y2="97" stroke="#59626c" stroke-width="2"/>
+            </g>
+            <circle cx="735" cy="80" r="9" fill="#12151a" stroke="#c9d2db" stroke-width="2"/>
+            <text x="735" y="84" text-anchor="middle" class="t-title" style="font-size:10px">M</text>
+          </g>
+          <text x="735" y="130" text-anchor="middle" class="t-small">MOTOR DE ARRANQUE</text>
+
+          <!-- ===== AVIONICS MASTER / RELÉ ===== -->
+          <g class="node" id="n-avsw">
+            <rect class="box" x="480" y="160" width="110" height="60" rx="6"/>
+            <circle cx="506" cy="200" r="3.5" fill="#c9d2db"/>
+            <circle cx="564" cy="200" r="3.5" fill="#c9d2db"/>
+            <line class="contact" id="c-avsw" x1="506" y1="200" x2="562" y2="184"/>
+            <text x="535" y="176" text-anchor="middle" class="t-title">AV MASTER</text>
+          </g>
+          <text x="535" y="238" text-anchor="middle" class="t-small">relé de protección</text>
+
+          <!-- ===== AVIONICS BUS ===== -->
+          <rect class="bus" id="n-avbus" x="650" y="140" width="16" height="160" rx="3"/>
+          <text x="658" y="318" text-anchor="middle" class="t-title">AVIONICS BUS</text>
+          <g class="load" id="ld-1"><rect class="box" x="720" y="150" width="96" height="24" rx="4"/><text x="768" y="166" text-anchor="middle">COM 1</text></g>
+          <g class="load" id="ld-2"><rect class="box" x="720" y="190" width="96" height="24" rx="4"/><text x="768" y="206" text-anchor="middle">NAV 1</text></g>
+          <g class="load" id="ld-3"><rect class="box" x="720" y="230" width="96" height="24" rx="4"/><text x="768" y="246" text-anchor="middle">GPS</text></g>
+          <g class="load" id="ld-4"><rect class="box" x="720" y="270" width="96" height="24" rx="4"/><text x="768" y="286" text-anchor="middle">XPDR</text></g>
+
+          <!-- ===== ALTERNADOR ===== -->
+          <g class="node" id="n-alt">
+            <circle class="box" cx="520" cy="280" r="30"/>
+            <path d="M503,280 q8.5,-14 17,0 t17,0" stroke="#c9d2db" stroke-width="2" fill="none"/>
+            <text x="520" y="302" text-anchor="middle" class="t-small">ALT</text>
+          </g>
+          <text x="560" y="284" class="t-small">ALTERNADOR 28V</text>
+
+          <!-- ===== SISTEMA DE ENCENDIDO ===== -->
+          <g class="node" id="n-key">
+            <rect class="box" x="30" y="340" width="130" height="95" rx="8"/>
+            <text x="95" y="360" text-anchor="middle" class="t-title">LLAVE</text>
+            <text x="95" y="375" text-anchor="middle" class="t-small">MAG / START</text>
+            <text x="95" y="405" text-anchor="middle" class="t-title" id="keyTxt" style="font-size:15px">OFF</text>
+          </g>
+          <text x="208" y="360" text-anchor="middle" class="t-small">P-LEAD L</text>
+          <text x="208" y="410" text-anchor="middle" class="t-small">P-LEAD R</text>
+
+          <g class="node" id="n-magl">
+            <circle class="box" cx="280" cy="368" r="22"/>
+            <text x="280" y="364" text-anchor="middle" class="t-title" style="font-size:10px">MAG L</text>
+            <text x="280" y="378" text-anchor="middle" class="t-small mag-txt" id="maglTxt">GND</text>
+          </g>
+          <g class="node" id="n-magr">
+            <circle class="box" cx="280" cy="418" r="22"/>
+            <text x="280" y="414" text-anchor="middle" class="t-title" style="font-size:10px">MAG R</text>
+            <text x="280" y="428" text-anchor="middle" class="t-small mag-txt" id="magrTxt">GND</text>
+          </g>
+          <text x="386" y="361" text-anchor="middle" class="t-small">ALTA TENSIÓN (HT)</text>
+
+          <g class="node" id="n-plugs">
+            <rect class="box" x="470" y="350" width="110" height="85" rx="6"/>
+            <text x="525" y="372" text-anchor="middle" class="t-title">BUJÍAS</text>
+            <text x="525" y="390" text-anchor="middle" class="t-small">superior / inferior</text>
+            <g id="sparks" opacity="0">
+              <path d="M505,410 l6,-8 l2,6 l6,-8" stroke="#fff3a0" stroke-width="2" fill="none"/>
+              <path d="M533,410 l6,-8 l2,6 l6,-8" stroke="#fff3a0" stroke-width="2" fill="none"/>
+            </g>
+          </g>
+
+          <g class="node" id="n-eng">
+            <rect class="box" x="620" y="350" width="140" height="85" rx="6"/>
+            <text x="690" y="370" text-anchor="middle" class="t-title">MOTOR 4 CIL.</text>
+            <g id="prop">
+              <ellipse cx="652" cy="404" rx="4" ry="18" fill="#7f8a96"/>
+              <circle cx="652" cy="404" r="4" fill="#c9d2db"/>
+            </g>
+            <text x="710" y="398" text-anchor="middle" class="t-small" id="engState">DETENIDO</text>
+            <text x="710" y="416" text-anchor="middle" class="t-title" id="engRpm">0 RPM</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- ===== Instrumentos ===== -->
+      <div class="inst-row">
+        <div class="tach-box">
+          <span class="info" data-g="tach" tabindex="0" role="button" aria-label="¿Qué es el tacómetro?">i</span>
+          <svg class="tach" viewBox="0 0 200 200" id="tach">
+            <circle cx="100" cy="100" r="96" fill="#0a0c0f" stroke="#3b424b" stroke-width="4"/>
+            <circle cx="100" cy="100" r="88" fill="#050608" stroke="#1d2228" stroke-width="2"/>
+            <g id="tachTicks"></g>
+            <text x="100" y="140" text-anchor="middle" fill="#7f8a96" font-family="JetBrains Mono,monospace" font-size="9">RPM ×100</text>
+            <text x="100" y="160" text-anchor="middle" fill="#2bf07a" font-family="JetBrains Mono,monospace" font-size="15" font-weight="700" id="tachDigital">0</text>
+            <g id="needle" transform="rotate(-135 100 100)">
+              <line x1="100" y1="112" x2="100" y2="22" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+              <line x1="100" y1="40" x2="100" y2="22" stroke="#ffb01f" stroke-width="3" stroke-linecap="round"/>
+            </g>
+            <circle cx="100" cy="100" r="8" fill="#2a2f36" stroke="#8a939d" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="readouts">
+          <div class="ro"><div class="k">VOLTS BUS<span class="info" data-g="volts" tabindex="0" role="button">i</span></div><div class="v dim" id="roVolt">00.0<small>V</small></div></div>
+          <div class="ro"><div class="k">CARGA<span class="info" data-g="amps" tabindex="0" role="button">i</span></div><div class="v dim" id="roAmp">000<small>A</small></div></div>
+          <div class="ro"><div class="k">LLAVE<span class="info" data-g="key" tabindex="0" role="button">i</span></div><div class="v" id="roKey">OFF</div></div>
+          <div class="anns">
+            <div class="ann" id="annLow">LOW VOLTS<span class="info" data-g="lowv" tabindex="0" role="button">i</span></div>
+            <div class="ann" id="annStart">STARTER<span class="info" data-g="annstart" tabindex="0" role="button">i</span></div>
+            <div class="ann" id="annAlt">ALT OUT<span class="info" data-g="annalt" tabindex="0" role="button">i</span></div>
+            <div class="ann" id="annRun">ENG RUN<span class="info" data-g="annrun" tabindex="0" role="button">i</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= CONSOLA ================= -->
+  <section class="panel">
+    <span class="screw-b"></span>
+    <div class="console-head">
+      <div class="panel-title">Consola de diagnóstico · continuidad y alertas</div>
+      <button class="btn" id="btnClear" style="margin-left:12px">LIMPIAR</button>
+    </div>
+    <div class="console" id="console"></div>
+  </section>
+</div>
+
+<div class="pop" id="pop" hidden role="dialog" aria-live="polite">
+  <button class="x" id="popX" aria-label="Cerrar">×</button>
+  <h4 id="popT"></h4>
+  <div id="popB"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   CONSTANTES Y ESTADO
+   ===================================================================== */
+const KEY = ['OFF','R','L','BOTH','START'];
+const KEY_ANG = [-72,-36,0,36,78];          // grados (0 = arriba, sentido horario)
+const KEY_DESC = {
+  OFF:  'Ambos P-leads a masa → magnetos inhibidos. Encendido desactivado.',
+  R:    'Magneto DERECHO vivo · magneto izquierdo a masa.',
+  L:    'Magneto IZQUIERDO vivo · magneto derecho a masa.',
+  BOTH: 'Ambos magnetos vivos → encendido dual (operación normal).',
+  START:'Contacto START: excita la bobina del solenoide de arranque. Magneto L (acoplamiento de impulso) vivo, R a masa.'
+};
+
+const S = {
+  bat:false, alt:false, av:false,
+  key:0,
+  lowBat:false, solFail:false,
+  rpm:0, running:false, flare:0,
+  startT:0, crankT:0, catchAt:1.8, catchT:null, startedRunning:false,
+  volts:0, amps:0, lowVolts:false,
+  stAngle:0, propAngle:0,
+  prev:null
+};
+
+const $ = id => document.getElementById(id);
+
+/* =====================================================================
+   CONSOLA
+   ===================================================================== */
+const con = $('console');
+function log(msg, type='info'){
+  const d = new Date();
+  const ts = d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0');
+  const el = document.createElement('div');
+  el.className = 'ln '+type;
+  el.innerHTML = `<span class="ts">[${ts}]</span> `;
+  el.appendChild(document.createTextNode(msg));
+  const cur = con.querySelector('.cursor-line');
+  if(cur) con.insertBefore(el, cur); else con.appendChild(el);
+  while(con.children.length > 250) con.removeChild(con.firstChild);
+  con.scrollTop = con.scrollHeight;
+}
+function addCursor(){
+  const c = document.createElement('div');
+  c.className='ln sys cursor-line';
+  c.innerHTML = '&gt; <span class="cursor"></span>';
+  con.appendChild(c);
+}
+
+/* =====================================================================
+   AUDIO (Web Audio API, todo sintetizado)
+   ===================================================================== */
+const A = { ctx:null, on:true, master:null, noiseBuf:null, eng:null, st:null };
+
+function audioInit(){
+  if(A.ctx){ if(A.ctx.state==='suspended') A.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC){ log('[SYS] Web Audio API no disponible en este navegador.','warn'); return; }
+  const c = new AC(); A.ctx = c;
+  A.master = c.createGain(); A.master.gain.value = A.on ? 0.8 : 0;
+  const comp = c.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.ratio.value = 4;
+  A.master.connect(comp); comp.connect(c.destination);
+
+  const len = c.sampleRate * 2;
+  A.noiseBuf = c.createBuffer(1, len, c.sampleRate);
+  const d = A.noiseBuf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+
+  buildEngine(); buildStarter();
+  log('[SYS] Motor de audio inicializado (síntesis en tiempo real).','sys');
+}
+function g(v){ const n=A.ctx.createGain(); n.gain.value=v; return n; }
+function curve(k){ const n=2048,c=new Float32Array(n); for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(1+k)*x/(1+k*Math.abs(x));} return c; }
+function noiseSrc(){ const s=A.ctx.createBufferSource(); s.buffer=A.noiseBuf; s.loop=true; return s; }
+
+function buildEngine(){
+  const c = A.ctx;
+  const out = g(0); out.connect(A.master);
+  const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=700; lp.Q.value=1.1;
+  const shaper = c.createWaveShaper(); shaper.curve = curve(25); shaper.oversample='2x';
+  const am = g(0.5);                       // modulado por pulsos de combustión
+  const o1 = c.createOscillator(); o1.type='sawtooth';
+  const o2 = c.createOscillator(); o2.type='triangle';
+  const o3 = c.createOscillator(); o3.type='square';
+  o1.connect(g(0.55)).connect(shaper);
+  o2.connect(g(0.45)).connect(shaper);
+  o3.connect(g(0.12)).connect(shaper);
+  const ns = noiseSrc();
+  const nbp = c.createBiquadFilter(); nbp.type='bandpass'; nbp.frequency.value=650; nbp.Q.value=0.8;
+  ns.connect(nbp).connect(g(0.55)).connect(am);
+  shaper.connect(am); am.connect(lp); lp.connect(out);
+  // Pulsos de cilindro
+  const lfo = c.createOscillator(); lfo.type='square';
+  const lfoG = g(0.45); lfo.connect(lfoG); lfoG.connect(am.gain);
+  // Soplido de hélice
+  const pn = noiseSrc();
+  const plp = c.createBiquadFilter(); plp.type='lowpass'; plp.frequency.value=320;
+  const propG = g(0); pn.connect(plp).connect(propG).connect(out);
+  [o1,o2,o3,ns,lfo,pn].forEach(n=>n.start());
+  A.eng = {out,lp,o1,o2,o3,lfo,lfoG,propG};
+}
+
+function buildStarter(){
+  const c = A.ctx;
+  const out = g(0); out.connect(A.master);
+  const am = g(0.55);
+  const whine = c.createOscillator(); whine.type='sawtooth'; whine.frequency.value=120;
+  const wbp = c.createBiquadFilter(); wbp.type='bandpass'; wbp.frequency.value=700; wbp.Q.value=1.4;
+  whine.connect(wbp).connect(g(0.7)).connect(am);
+  const gear = c.createOscillator(); gear.type='square'; gear.frequency.value=420;
+  gear.connect(g(0.05)).connect(am);
+  const ns = noiseSrc();
+  const hp = c.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+  ns.connect(hp).connect(g(0.28)).connect(am);
+  const thump = c.createOscillator(); thump.type='sine'; thump.frequency.value=55;
+  thump.connect(g(0.6)).connect(am);
+  // Compresión de cilindros: "chug-chug"
+  const lfo = c.createOscillator(); lfo.type='sine'; lfo.frequency.value=6;
+  const lfoG = g(0.45); lfo.connect(lfoG); lfoG.connect(am.gain);
+  am.connect(out);
+  [whine,gear,ns,thump,lfo].forEach(n=>n.start());
+  A.st = {out,whine,gear,lfo,thump};
+}
+
+function relayClick(heavy=false){
+  if(!A.ctx || !A.on) return;
+  const c=A.ctx, t=c.currentTime;
+  const s=c.createBufferSource(); s.buffer=A.noiseBuf;
+  const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value= heavy?1700:3400; bp.Q.value=1.6;
+  const e=c.createGain();
+  e.gain.setValueAtTime(0,t); e.gain.linearRampToValueAtTime(heavy?1.0:0.55,t+0.002);
+  e.gain.exponentialRampToValueAtTime(0.001,t+(heavy?0.08:0.035));
+  s.connect(bp).connect(e).connect(A.master);
+  s.start(t, Math.random()*1.5); s.stop(t+0.12);
+  const o=c.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(heavy?160:260,t); o.frequency.exponentialRampToValueAtTime(heavy?40:90,t+0.07);
+  const oe=c.createGain();
+  oe.gain.setValueAtTime(0,t); oe.gain.linearRampToValueAtTime(heavy?0.9:0.25,t+0.003);
+  oe.gain.exponentialRampToValueAtTime(0.001,t+0.09);
+  o.connect(oe).connect(A.master); o.start(t); o.stop(t+0.12);
+  if(heavy){ // rebote del contacto
+    const s2=c.createBufferSource(); s2.buffer=A.noiseBuf;
+    const e2=c.createGain();
+    e2.gain.setValueAtTime(0,t+0.018); e2.gain.linearRampToValueAtTime(0.35,t+0.02);
+    e2.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+    s2.connect(bp).connect(e2).connect(A.master); s2.start(t+0.018, Math.random()); s2.stop(t+0.07);
+  }
+}
+function keyClick(){
+  if(!A.ctx || !A.on) return;
+  const c=A.ctx,t=c.currentTime;
+  const s=c.createBufferSource(); s.buffer=A.noiseBuf;
+  const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=5200; bp.Q.value=3;
+  const e=c.createGain();
+  e.gain.setValueAtTime(0,t); e.gain.linearRampToValueAtTime(0.5,t+0.001);
+  e.gain.exponentialRampToValueAtTime(0.001,t+0.025);
+  s.connect(bp).connect(e).connect(A.master); s.start(t,Math.random()); s.stop(t+0.05);
+}
+function pop(level=1){
+  if(!A.ctx || !A.on) return;
+  const c=A.ctx,t=c.currentTime+Math.random()*0.03;
+  const s=c.createBufferSource(); s.buffer=A.noiseBuf;
+  const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=480;
+  const e=c.createGain();
+  e.gain.setValueAtTime(0,t); e.gain.linearRampToValueAtTime(0.9*level,t+0.004);
+  e.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+  s.connect(lp).connect(e).connect(A.master); s.start(t,Math.random()); s.stop(t+0.15);
+  const o=c.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(95,t); o.frequency.exponentialRampToValueAtTime(38,t+0.1);
+  const oe=c.createGain();
+  oe.gain.setValueAtTime(0,t); oe.gain.linearRampToValueAtTime(0.8*level,t+0.004);
+  oe.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+  o.connect(oe).connect(A.master); o.start(t); o.stop(t+0.15);
+}
+
+function updateAudio(E){
+  if(!A.ctx) return;
+  const t=A.ctx.currentTime, tc=0.06;
+  // --- Motor de combustión ---
+  const e=A.eng, rpm=Math.max(S.rpm,1);
+  let fire = rpm/60*2;                    // 4 cilindros, 4 tiempos
+  const single = S.running && (E.magL !== E.magR);
+  if(single) fire *= 1 + (Math.random()-0.5)*0.06;
+  e.o1.frequency.setTargetAtTime(fire,t,tc);
+  e.o2.frequency.setTargetAtTime(fire*2.01,t,tc);
+  e.o3.frequency.setTargetAtTime(fire*0.5,t,tc);
+  e.lfo.frequency.setTargetAtTime(fire,t,tc);
+  e.lp.frequency.setTargetAtTime(260+rpm*0.75,t,0.1);
+  let lvl = S.running ? 0.26 + Math.min(S.flare,1)*0.12 : 0;
+  if(single && Math.random()<0.04) lvl *= 0.35;        // fallo de encendido ocasional
+  e.out.gain.setTargetAtTime(lvl,t,S.running?0.08:0.35);
+  e.propG.gain.setTargetAtTime(Math.min(S.rpm/1000,1.4)*0.12,t,0.2);
+  // --- Motor de arranque ---
+  const st=A.st;
+  const cranking = E.starterSol;
+  const crpm = S.running ? 300 : S.rpm;
+  st.whine.frequency.setTargetAtTime((S.lowBat?45:70)+crpm*0.55,t,0.08);
+  st.gear.frequency.setTargetAtTime(300+crpm*1.6,t,0.08);
+  st.lfo.frequency.setTargetAtTime(Math.max(crpm/60*2,1.5),t,0.08);
+  st.out.gain.setTargetAtTime(cranking?0.32:0,t,cranking?0.03:0.12);
+}
+
+/* =====================================================================
+   LÓGICA ELÉCTRICA
+   ===================================================================== */
+function computeElec(){
+  const k = KEY[S.key];
+  const batSol = S.bat;
+  const mainBus = batSol;
+  const startCmd = k==='START' && mainBus;
+  const starterSol = startCmd && !S.solFail;
+  const magL = (k==='L' || k==='BOTH' || k==='START');
+  const magR = (k==='R' || k==='BOTH');
+  const altOn = mainBus && S.alt && S.running && S.rpm > 600;
+  const avBus = mainBus && S.av && !startCmd;
+  const avShed = mainBus && S.av && startCmd;
+  return {k,batSol,mainBus,startCmd,starterSol,magL,magR,altOn,avBus,avShed};
+}
+
+/* =====================================================================
+   ACCIONES DEL USUARIO
+   ===================================================================== */
+function setKey(i, src='user'){
+  i = Math.max(0, Math.min(KEY.length-1, i));
+  if(i===S.key) return;
+  const prevK = KEY[S.key];
+  S.key = i;
+  const k = KEY[i];
+  keyClick();
+  renderKey();
+
+  if(src==='spring') log('[IGN] Retorno por resorte: llave START → BOTH.','sys');
+  log(`[IGN] Llave en ${k}: ${KEY_DESC[k]}`, k==='START'?'hi':'info');
+
+  if(k==='START'){
+    S.startT=0; S.crankT=0; S.catchT=null;
+    S.catchAt = 1.3 + Math.random()*1.1;
+    S.startedRunning = S.running;
+    if(S.running) log('[ENG] ✖ ALERTA: arrancador accionado con el motor en marcha. Riesgo de daño al piñón Bendix y a la corona.','err');
+    else if(S.bat && S.lowBat && !S.solFail) log('[ELEC] Batería descargada: la tensión caerá bajo carga de arranque — giro lento esperado.','warn');
+  }
+  if(S.running && prevK==='BOTH' && (k==='R'||k==='L'))
+    log(`[ENG] Prueba de magneto ${k}: caída de RPM esperada (máx. ~125 RPM, diferencia L/R máx. ~50 RPM).`,'info');
+  if(S.running && (prevK==='R'||prevK==='L') && k==='BOTH')
+    log('[ENG] Encendido dual restablecido: RPM recupera valor de ralentí.','ok');
+  if(!S.running && (k==='R'||k==='L'||k==='BOTH') && src!=='spring')
+    log('[IGN] ⚠ Precaución: magneto(s) VIVO(s). Mover la hélice a mano puede provocar el encendido.','warn');
+}
+
+function toggleSw(name){
+  audioInit();
+  S[name] = !S[name];
+  keyClick();
+  renderSwitches();
+  const on = S[name];
+  if(name==='bat'){
+    log(`[ELEC] BAT MASTER → ${on?'ON':'OFF'}.`, on?'info':'sys');
+    if(!on && S.running) log('[ENG] Los magnetos son autónomos: el motor sigue en marcha sin energía del bus eléctrico.','info');
+  }
+  if(name==='alt'){
+    log(`[ELEC] ALT (campo del alternador) → ${on?'ON':'OFF'}.`, 'info');
+    if(on && !S.bat) log('[ELEC] Sin BAT MASTER no hay excitación de campo: el alternador no puede generar.','warn');
+    else if(on && !S.running) log('[ELEC] Campo excitado, pero el motor no gira: sin generación todavía.','sys');
+  }
+  if(name==='av'){
+    log(`[AVN] AVIONICS MASTER → ${on?'ON':'OFF'}.`, 'info');
+    if(on && !S.bat) log('[AVN] Sin continuidad: MAIN BUS desenergizado, el AVIONICS BUS no puede alimentarse.','warn');
+    if(on && KEY[S.key]==='START') log('[AVN] ⚠ Buena práctica: mantener AVIONICS OFF durante el arranque.','warn');
+  }
+}
+
+function springBack(msg){ if(msg) log(msg,'info'); setKey(3,'spring'); }
+
+/* =====================================================================
+   SIMULACIÓN (paso de tiempo)
+   ===================================================================== */
+function step(dt){
+  let E = computeElec();
+
+  // --- Lógica de la posición momentánea START ---
+  if(E.k==='START'){
+    S.startT += dt;
+    if(S.startedRunning){
+      if(S.startT>0.35) springBack();
+    } else if(!E.mainBus){
+      if(S.startT>1.2){
+        log('[IGN] ✖ Sin continuidad: MAIN BUS desenergizado (BAT MASTER en OFF). La bobina del solenoide de arranque no recibe tensión.','err');
+        springBack();
+      }
+    } else if(S.solFail){
+      if(S.startT>2.0){
+        log('[ELEC] ✖ Bobina del solenoide excitada (se oye el clic) pero sin continuidad en los contactos de potencia. Revisar contactos quemados o cable de alta corriente.','err');
+        springBack();
+      }
+    } else if(S.running && S.catchT!==null){
+      if(S.startT - S.catchT > 0.6) springBack('[ENG] Motor estabilizado: se suelta la llave.');
+    } else if(S.startT > 8){
+      log('[ENG] ⚠ Límite de giro del arrancador (8 s) alcanzado sin arranque. Dejar enfriar el motor de arranque antes de reintentar.','warn');
+      springBack();
+    }
+    E = computeElec();
+  }
+
+  // --- Motor de combustión ---
+  const cranking = E.starterSol;
+  if(S.running && !E.magL && !E.magR){
+    S.running=false; S.flare=0;
+    log('[ENG] Encendido interrumpido: ambos P-leads a masa. Motor deteniéndose.','warn');
+  }
+  if(!S.running && cranking && E.magL && S.rpm>150){
+    S.crankT += dt;
+    if(Math.random() < dt*5*Math.min(1,S.crankT/S.catchAt)) pop(0.45);
+    if(S.crankT >= S.catchAt){
+      S.running = true; S.flare = 1.4; S.catchT = S.startT;
+      pop(1); setTimeout(()=>pop(0.9),70); setTimeout(()=>pop(0.8),150);
+      log('[ENG] ✔ ARRANQUE EXITOSO: combustión sostenida, motor acelerando a ralentí.','ok');
+    }
+  }
+  let target, tau;
+  if(S.running){
+    target = (E.magL && E.magR) ? 1000 : (E.magL ? 925 : 950);
+    if(S.flare>0){ S.flare -= dt; target += 420*Math.max(0,Math.min(1,S.flare)); }
+    tau = 0.45;
+  } else if(cranking){
+    target = S.lowBat ? 95 : 235; tau = 0.4;
+  } else { target = 0; tau = S.rpm>300 ? 1.1 : 0.5; }
+  S.rpm += (target-S.rpm)*(1-Math.exp(-dt/tau));
+  if(target===0 && S.rpm<2) S.rpm = 0;
+
+  // --- Tensión y corriente ---
+  let vT=0, aT=0;
+  if(E.mainBus){
+    vT = S.lowBat ? 23.0 : 27.2;
+    aT = 4.5 + (E.avBus?9.5:0);
+    if(E.starterSol){
+      vT -= S.lowBat ? 5.4 : 4.6;
+      aT += (S.lowBat?330:270) - S.rpm*0.25;
+    }
+    if(E.altOn){ vT = 28.4; }
+  }
+  S.volts += (vT-S.volts)*(1-Math.exp(-dt/0.12));
+  S.amps  += (aT-S.amps)*(1-Math.exp(-dt/0.12));
+  if(S.volts < 0.05) S.volts = 0;
+
+  // Histéresis de LOW VOLTS
+  if(E.mainBus && !S.lowVolts && S.volts < 24.0 && S.volts > 1) S.lowVolts = true;
+  else if(S.lowVolts && (S.volts > 24.6 || !E.mainBus)) S.lowVolts = false;
+
+  // Animación de rotores
+  if(E.starterSol) S.stAngle = (S.stAngle + dt*1400) % 360;
+  S.propAngle = (S.propAngle + S.rpm*dt*0.9) % 360;
+
+  watch(E);
+  updateAudio(E);
+  render(E);
+}
+
+/* Detección de cambios → mensajes y chasquidos */
+function watch(E){
+  const p = S.prev;
+  const ext = {...E, lowVolts:S.lowVolts, running:S.running, stopped:S.rpm===0};
+  if(!p){ S.prev = ext; return; }
+
+  if(E.batSol !== p.batSol){
+    relayClick(true);
+    if(E.batSol) log(`[ELEC] ✔ Bobina del SOL. BATERÍA excitada → contactor cerrado. Continuidad FUENTE 28V DC → MAIN BUS (${(S.lowBat?23.0:27.2).toFixed(1)} V).`,'ok');
+    else log('[ELEC] SOL. BATERÍA abierto: MAIN BUS sin alimentación.','warn');
+  }
+  if(E.startCmd !== p.startCmd && S.solFail){ relayClick(false); }
+  if(E.starterSol !== p.starterSol){
+    relayClick(true);
+    if(E.starterSol) log(`[ELEC] SOL. ARRANQUE cerrado → circuito de ALTA CORRIENTE activo (~${S.lowBat?330:270} A). Motor de arranque engranado.`,'hi');
+    else log('[ELEC] SOL. ARRANQUE abierto: arrancador desenergizado, piñón desengranado.','sys');
+  }
+  if(E.avBus !== p.avBus){
+    relayClick(false);
+    if(E.avBus) log('[AVN] ✔ Relé de aviónica cerrado: AVIONICS BUS energizado (COM 1, NAV 1, GPS, XPDR).','ok');
+    else if(E.avShed) log('[AVN] AVIONICS BUS deslastrado durante el arranque: protección contra picos y caídas de tensión.','warn');
+    else log('[AVN] AVIONICS BUS desenergizado.','sys');
+  }
+  if(E.altOn !== p.altOn){
+    if(E.altOn) log('[ELEC] ✔ Alternador en línea: bus regulado a 28.4 V, batería en carga.','ok');
+    else if(S.alt && E.mainBus) log('[ELEC] Alternador fuera de línea: el bus queda alimentado solo por batería.','warn');
+  }
+  if(S.lowVolts !== p.lowVolts){
+    if(S.lowVolts) log(`[ELEC] ⚠ LOW VOLTS: tensión de bus ${S.volts.toFixed(1)} V${E.starterSol?' (caída esperada bajo carga de arranque)':''}.`, E.starterSol?'warn':'err');
+    else log(`[ELEC] Tensión de bus normalizada: ${S.volts.toFixed(1)} V.`,'ok');
+  }
+  if(S.running && !p.running && S.bat && S.alt) log('[ELEC] Alternador alcanzará la tensión de regulación al superar ~600 RPM.','sys');
+  if(S.rpm===0 && !p.stopped) log('[ENG] Motor detenido (0 RPM).','sys');
+  if(E.magL !== p.magL && S.running) log(`[IGN] Magneto L ${E.magL?'VIVO':'a masa'}.`,'sys');
+  if(E.magR !== p.magR && S.running) log(`[IGN] Magneto R ${E.magR?'VIVO':'a masa'}.`,'sys');
+
+  S.prev = ext;
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+const wireCache = {};
+function setWire(id, st){
+  if(wireCache[id]===st) return; wireCache[id]=st;
+  document.querySelectorAll(`[data-w="${id}"]`).forEach(el=>{
+    const base = el.classList.contains('flow') ? 'flow' : 'w';
+    el.setAttribute('class', base + (st ? ' '+st : ''));
+  });
+}
+const clsCache = {};
+function setCls(el, base, st){
+  const key = el.id || base;
+  const v = base + (st?' '+st:'');
+  if(clsCache[key]===v) return; clsCache[key]=v;
+  el.setAttribute('class', v);
+}
+function led(id, st, blink){
+  const el=$(id); const v='led'+(st?' '+st:'')+(blink?' blink':'');
+  if(el.className!==v) el.className=v;
+}
+function ann(id, st){ const el=$(id); const v='ann'+(st?' '+st:''); if(el.className!==v) el.className=v; }
+function contact(id, closed, hi){
+  const el=$(id);
+  const y2 = closed ? +el.getAttribute('y1') : +el.getAttribute('y1')-16;
+  const x2 = closed ? +el.getAttribute('x1')+58 : +el.getAttribute('x1')+56;
+  el.setAttribute('x2',x2); el.setAttribute('y2',y2);
+  el.setAttribute('class','contact'+(closed?(hi?' hi':' closed'):''));
+}
+
+function render(E){
+  const hiCur = E.starterSol;
+  // Cables de potencia
+  setWire('bat',  E.batSol ? (hiCur?'hi':'on') : 'live');
+  setWire('feed', E.batSol ? (hiCur?'hi':'on') : '');
+  setWire('st1',  E.mainBus ? (E.starterSol?'hi':'live') : '');
+  setWire('st2',  E.starterSol ? 'hi' : '');
+  setWire('av1',  E.mainBus ? (E.avBus?'on':'live') : '');
+  setWire('av2',  E.avBus ? 'on' : '');
+  ['ld1','ld2','ld3','ld4'].forEach(w=>setWire(w, E.avBus?'on':''));
+  setWire('alt',  E.altOn ? 'on' : '');
+  const sparking = S.rpm > 80;
+  setWire('htl', E.magL && sparking ? 'on' : '');
+  setWire('htr', E.magR && sparking ? 'on' : '');
+  setWire('pl', E.magL ? 'live' : '');
+  setWire('pr', E.magR ? 'live' : '');
+
+  setCls($('cmdLine'),'cmd', E.startCmd?'on':'');
+  setCls($('mechBendix'),'mech', E.starterSol?'hi':'');
+  setCls($('mechEng'),'mech', S.running?'on':(S.rpm>0?'hi':''));
+
+  // Nodos
+  setCls($('n-bat'),'node', S.lowBat?'hi':'on');
+  setCls($('n-batsol'),'node', E.batSol?(hiCur?'hi':'on'):'');
+  $('n-main').setAttribute('class','bus'+(E.mainBus?' on':''));
+  setCls($('n-stsol'),'node', E.starterSol?'hi':(E.startCmd&&S.solFail?'err':(E.startCmd?'on':'')));
+  setCls($('n-stmot'),'node', E.starterSol?'hi':'');
+  setCls($('n-avsw'),'node', E.avBus?'on':(E.avShed?'hi':''));
+  $('n-avbus').setAttribute('class','bus'+(E.avBus?' on':''));
+  ['ld-1','ld-2','ld-3','ld-4'].forEach(id=>setCls($(id),'load',E.avBus?'on':''));
+  setCls($('n-alt'),'node', E.altOn?'on':(S.alt&&E.mainBus?'hi':''));
+  setCls($('n-key'),'node', E.k==='START'?'hi':(E.k==='OFF'?'':'on'));
+  setCls($('n-magl'),'node', E.magL?'on':'');
+  setCls($('n-magr'),'node', E.magR?'on':'');
+  setCls($('n-plugs'),'node', (E.magL||E.magR)&&sparking?'on':'');
+  setCls($('n-eng'),'node', S.running?'on':(S.rpm>0?'hi':''));
+  $('maglTxt').textContent = E.magL?'VIVO':'GND';
+  $('magrTxt').textContent = E.magR?'VIVO':'GND';
+  $('maglTxt').style.fill = E.magL?'#2bf07a':'#6f7a86';
+  $('magrTxt').style.fill = E.magR?'#2bf07a':'#6f7a86';
+  $('sparks').setAttribute('opacity', (E.magL||E.magR)&&sparking ? (Math.random()>.4?1:.2) : 0);
+
+  contact('c-batsol', E.batSol, hiCur);
+  contact('c-stsol', E.starterSol, true);
+  contact('c-avsw', E.avBus, false);
+
+  $('stRotor').setAttribute('transform',`rotate(${S.stAngle} 735 80)`);
+  $('prop').setAttribute('transform',`rotate(${S.propAngle} 652 404)`);
+  $('engState').textContent = S.running ? 'EN MARCHA' : (E.starterSol ? 'GIRANDO' : (S.rpm>0?'DETENIÉNDOSE':'DETENIDO'));
+  $('engRpm').textContent = Math.round(S.rpm)+' RPM';
+
+  // LEDs
+  led('led-batsol', E.batSol?'g':'');
+  led('led-stsol', E.starterSol?'a':(E.startCmd&&S.solFail?'r':''), E.startCmd&&S.solFail);
+  led('led-magl', E.magL?'g':'');
+  led('led-magr', E.magR?'g':'');
+  led('led-avm', S.av ? (E.avShed||!E.mainBus?'a':'g') : '');
+  led('led-alt', E.altOn?'g':(S.alt&&E.mainBus?'a':''));
+  led('led-main', E.mainBus?'g':'');
+  led('led-avbus', E.avBus?'g':'');
+
+  // Anunciadores
+  ann('annLow', S.lowVolts?'r':'');
+  ann('annStart', E.starterSol?'a':'');
+  ann('annAlt', (S.alt && E.mainBus && !E.altOn) || (!S.alt && E.mainBus && S.running) ? 'a' : '');
+  ann('annRun', S.running?'g':'');
+
+  // Instrumentos
+  const ang = -135 + Math.min(S.rpm,3000)/3000*270;
+  $('needle').setAttribute('transform',`rotate(${ang} 100 100)`);
+  $('tachDigital').textContent = Math.round(S.rpm);
+  const vEl=$('roVolt');
+  vEl.innerHTML = S.volts.toFixed(1).padStart(4,'0')+'<small>V</small>';
+  vEl.className = 'v '+(S.volts<0.5?'dim':(S.volts<24?'bad':(S.volts<26?'warn':'')));
+  const aEl=$('roAmp');
+  aEl.innerHTML = String(Math.round(S.amps)).padStart(3,'0')+'<small>A</small>';
+  aEl.className = 'v '+(S.amps<0.5?'dim':(S.amps>100?'warn':''));
+}
+
+/* ---------- Interruptores ---------- */
+function renderSwitches(){
+  document.querySelectorAll('.tgl').forEach(b=>{
+    const on = S[b.dataset.sw];
+    b.classList.toggle('on',on);
+    b.querySelector('.pos').textContent = on?'ON':'OFF';
+  });
+}
+
+/* ---------- Llave rotativa ---------- */
+const keywrap=$('keywrap'), knob=$('knob');
+const CX=130, CY=132, R=112;
+function polar(r,deg){ const a=deg*Math.PI/180; return [CX+r*Math.sin(a), CY-r*Math.cos(a)]; }
+function buildKeyLabels(){
+  KEY.forEach((k,i)=>{
+    const [x,y]=polar(R,KEY_ANG[i]);
+    const el=document.createElement('div');
+    el.className='klabel'+(k==='START'?' start':'');
+    el.textContent=k; el.style.left=x+'px'; el.style.top=y+'px';
+    el.dataset.i=i;
+    el.addEventListener('click',e=>{e.stopPropagation(); audioInit(); setKey(i);});
+    keywrap.appendChild(el);
+  });
+  const [x1,y1]=polar(90,58), [x2,y2]=polar(90,88);
+  $('startArcPath').setAttribute('d',`M${x1},${y1} A90,90 0 0 1 ${x2},${y2}`);
+}
+function renderKey(){
+  const k=KEY[S.key];
+  knob.style.transform=`rotate(${KEY_ANG[S.key]}deg)`;
+  knob.classList.toggle('start',k==='START');
+  keywrap.querySelectorAll('.klabel').forEach(el=>el.classList.toggle('active',+el.dataset.i===S.key));
+  const ks=$('keyState'); ks.textContent=k; ks.classList.toggle('start',k==='START');
+  $('keyTxt').textContent=k;
+  $('keyTxt').style.fill = k==='START'?'#ffb01f':(k==='OFF'?'#c9d2db':'#2bf07a');
+  $('roKey').textContent=k;
+  $('roKey').className='v'+(k==='START'?' warn':(k==='OFF'?' dim':''));
+}
+
+/* ---------- Tacómetro ---------- */
+function buildTach(){
+  const gT=$('tachTicks'); let h='';
+  const P=(r,rpm)=>{const a=(-135+rpm/3000*270)*Math.PI/180;return [100+r*Math.sin(a),100-r*Math.cos(a)];};
+  const arc=(r,a,b,col,w)=>{const [x1,y1]=P(r,a),[x2,y2]=P(r,b);const large=((b-a)/3000*270)>180?1:0;
+    return `<path d="M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2}" stroke="${col}" stroke-width="${w}" fill="none"/>`;};
+  h+=arc(80,2100,2700,'#2bf07a',6);
+  h+=arc(80,2700,2760,'#ff3b3b',6);
+  for(let r=0;r<=3000;r+=100){
+    const major=r%500===0;
+    const [x1,y1]=P(major?70:75,r),[x2,y2]=P(84,r);
+    h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#c9d2db" stroke-width="${major?2.5:1}"/>`;
+    if(major){const [tx,ty]=P(58,r);h+=`<text x="${tx}" y="${ty+4}" text-anchor="middle" fill="#c9d2db" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">${r/100}</text>`;}
+  }
+  gT.innerHTML=h;
+}
+
+/* ---------- Duplicar cables para la animación de flujo de corriente ---------- */
+function buildFlows(){
+  document.querySelectorAll('path.w').forEach(p=>{
+    const f=p.cloneNode(); f.setAttribute('class','flow'); p.after(f);
+  });
+}
+
+/* =====================================================================
+   GLOSARIO: puntos de información
+   ===================================================================== */
+const GLOSS = {
+  source:{t:'Fuente 28V DC (batería)',
+    b:['Es la batería de la aeronave: almacena energía química y la entrega como corriente continua. Alimenta el arranque y todos los consumos mientras el alternador no está generando.',
+       'En un sistema de 28 V la batería es de 24 V nominales y el alternador regula el bus a unos 28 V.',
+       'Su borne positivo siempre tiene tensión; por eso el cable hasta el solenoide de batería se ve “vivo” aunque todo esté en OFF.'],
+    s:'Para simplificar, la batería en reposo marca 27.2 V; con la falla “batería descargada” baja a 23.0 V.'},
+  bat:{t:'Interruptor BAT MASTER',
+    b:['Es el interruptor general del sistema eléctrico. No conecta la batería directamente: solo excita la bobina del solenoide de batería, que es quien maneja la corriente fuerte.',
+       '<b>Importante:</b> no apaga los magnetos. Con BAT en OFF el motor puede seguir funcionando, y la hélice sigue siendo peligrosa si la llave no está en OFF.'],
+    s:'Atajo: tecla <b>B</b>.'},
+  batsol:{t:'Solenoide (contactor) de batería',
+    b:['Relé de alta corriente instalado junto a la batería. Cuando su bobina recibe la pequeña corriente del interruptor BAT, sus contactos gruesos se cierran y conectan la batería al Main Bus.',
+       'Así se evita llevar cables de alta corriente hasta la cabina, y la batería se puede aislar por completo en una emergencia.'],
+    s:'BAT ON cierra el contactor (se oye el clic) y el Main Bus se enciende.'},
+  alt:{t:'Interruptor ALT (campo del alternador)',
+    b:['Conecta la corriente de excitación del campo del alternador. Sin esa corriente el alternador no genera, aunque el motor gire.',
+       'En muchas aeronaves es la mitad roja del master partido (ALT | BAT), diseñado para que ALT no pueda quedar encendido con BAT apagado.'],
+    s:'Tecla <b>A</b>. El alternador entra en línea por arriba de ~600 RPM.'},
+  altgen:{t:'Alternador',
+    b:['Generador movido por el motor. Produce corriente alterna, la rectifica a continua y, con el regulador de voltaje, mantiene el bus en unos 28 V. Recarga la batería y alimenta los consumos en vuelo.',
+       'La mayoría necesita corriente de la batería para excitar su campo: con la batería totalmente muerta puede no entrar en línea.'],
+    s:'Entra en línea con BAT ON, ALT ON y motor por arriba de ~600 RPM.'},
+  av:{t:'Avionics Master y relé de aviónica',
+    b:['Interruptor que conecta el Avionics Bus al Main Bus a través de un relé, para encender o apagar todos los equipos de radio y navegación de una sola vez.',
+       'Se mantiene en OFF durante el arranque y el apagado del motor para proteger la electrónica sensible de picos y caídas de tensión.'],
+    s:'Tecla <b>V</b>. Si está en ON al dar START, el Avionics Bus se desconecta automáticamente (deslastre) y el LED se pone ámbar.'},
+  key:{t:'Interruptor de magnetos (llave)',
+    b:['Selecciona qué magnetos están vivos y acciona el arranque:',
+       '<b>OFF</b>: ambos P-leads a masa, sin chispa.<br><b>R</b>: solo el magneto derecho.<br><b>L</b>: solo el magneto izquierdo.<br><b>BOTH</b>: los dos, posición normal de vuelo.<br><b>START</b>: posición momentánea con resorte; excita el solenoide de arranque.',
+       'R y L se usan en la prueba de magnetos antes del despegue: se verifica la caída de RPM de cada uno.'],
+    s:'Clic para avanzar, clic derecho para retroceder, flechas ← →, tecla <b>S</b> para START.'},
+  mag:{t:'¿Qué es el magneto?',
+    b:['Es un generador eléctrico autónomo que produce la chispa de las bujías. Un imán permanente, movido por el propio motor, induce corriente en una bobina primaria; al abrirse los platinos, la bobina secundaria eleva la tensión hasta unos 20 000 V.',
+       '<b>No depende de la batería ni del alternador:</b> aunque falle todo el sistema eléctrico, el motor sigue funcionando.',
+       'Los motores de pistón llevan dos magnetos (L y R) por redundancia y mejor combustión. El izquierdo suele tener <b>acoplamiento de impulso</b>, que da una chispa fuerte y retrasada a las bajas RPM del arranque.'],
+    s:'<b>VIVO</b> = puede producir chispa. <b>GND</b> = su P-lead está a masa y no hay chispa.'},
+  plead:{t:'P-lead (cable primario del magneto)',
+    b:['Cable que une el circuito primario del magneto con la llave. Para apagar un magneto, la llave lo conecta a masa: la corriente primaria se desvía y ya no hay chispa.',
+       '<b>Peligro:</b> si un P-lead se rompe o se desconecta, ese magneto queda vivo aunque la llave esté en OFF. Por eso toda hélice se trata siempre como si pudiera arrancar.'],
+    s:'El cable se dibuja vivo cuando el magneto no está a masa.'},
+  ht:{t:'Cables de alta tensión (HT)',
+    b:['Llevan el pulso de alta tensión del magneto, a través de su distribuidor, hasta cada bujía en el orden de encendido de los cilindros.',
+       'Van blindados para que la chispa no genere interferencia en las radios.'],
+    s:'Se encienden en verde cuando el magneto está vivo y el motor gira.'},
+  plugs:{t:'Bujías',
+    b:['Producen la chispa que enciende la mezcla aire-combustible dentro de cada cilindro.',
+       'Cada cilindro tiene dos (superior e inferior), una alimentada por cada magneto. Dos frentes de llama queman la mezcla más rápido y completo; por eso con un solo magneto las RPM bajan un poco.'],
+    s:'Se ven destellos cuando hay chispa.'},
+  stsol:{t:'Solenoide de arranque',
+    b:['Relé de muy alta corriente (150 a 300 A o más) que conecta el Main Bus con el motor de arranque. Su bobina se energiza con la posición START de la llave.',
+       'Diagnóstico típico: si se oye el clic pero el motor no gira, la bobina funciona pero fallan los contactos de potencia o el cable grueso.'],
+    s:'Se pone ámbar al conducir la corriente de arranque. Su falla se puede activar en “Inyección de fallas”.'},
+  cmd:{t:'Comando START',
+    b:['Circuito de baja corriente que va del borne START de la llave a la bobina del solenoide de arranque.',
+       'Solo transporta unos pocos amperes; la corriente grande la maneja el solenoide. Por eso la llave de cabina puede ser pequeña.']},
+  stmot:{t:'Motor de arranque',
+    b:['Motor eléctrico de corriente continua y alto par que hace girar el cigüeñal hasta que el motor arranca. Es el consumo más grande de todo el sistema y se calienta rápido.',
+       'Los fabricantes limitan el tiempo de giro continuo y piden pausas de enfriamiento entre intentos.'],
+    s:'El giro se corta solo a los 8 s si el motor no arranca.'},
+  bendix:{t:'Bendix (piñón de arranque)',
+    b:['Mecanismo que engrana el piñón del motor de arranque con la corona del motor mientras el arrancador gira, y lo desengrana cuando el motor arranca y lo supera en velocidad.',
+       'Accionar START con el motor en marcha puede dañar el piñón y la corona.']},
+  main:{t:'Main Bus (barra principal)',
+    b:['Barra colectora de la que se alimentan, a través de breakers, los circuitos de la aeronave: luces, bomba de combustible, flaps, instrumentos y el propio Avionics Bus.',
+       'Recibe energía de la batería (por el solenoide de batería) y del alternador cuando está en línea.'],
+    s:'Se ilumina en verde cuando tiene tensión.'},
+  avbus:{t:'Avionics Bus',
+    b:['Barra separada que alimenta solo los equipos electrónicos sensibles: radios, navegación, GPS y transpondedor.',
+       'Se conecta al Main Bus a través del Avionics Master, para poder aislarla en el arranque o ante una falla.'],
+    s:'Se desconecta automáticamente durante el arranque.'},
+  loads:{t:'Equipos de aviónica',
+    b:['<b>COM 1</b>: radio VHF de comunicaciones con control de tránsito aéreo.<br><b>NAV 1</b>: receptor VOR/ILS para navegación y aproximación.<br><b>GPS</b>: navegador satelital.<br><b>XPDR</b>: transpondedor, que responde a los radares de control con código e información de altitud.'],
+    s:'Suman unos 9.5 A cuando el Avionics Bus está energizado.'},
+  eng:{t:'Motor de pistón de 4 cilindros',
+    b:['Motor de cuatro tiempos típico de aviación general, con cilindros horizontalmente opuestos. Cada cilindro produce una explosión cada dos vueltas del cigüeñal.',
+       'Una vez arrancado, solo necesita combustible y la chispa de los magnetos: no depende del sistema eléctrico.'],
+    s:'Ralentí ~1000 RPM en BOTH; ~925 a 950 RPM con un solo magneto.'},
+  tach:{t:'Tacómetro',
+    b:['Indica las revoluciones por minuto (RPM) del motor. El arco verde es el rango normal de operación y la línea roja el máximo permitido.',
+       'En la prueba de magnetos se observa la caída de RPM al pasar de BOTH a R o a L.']},
+  volts:{t:'Voltímetro del bus',
+    b:['Muestra la tensión del Main Bus. Con el alternador en línea debe estar cerca de 28 V; solo con batería es menor, y cae fuerte durante el arranque.'],
+    s:'Verde normal, ámbar bajo, rojo por debajo de 24 V.'},
+  amps:{t:'Carga (amperímetro)',
+    b:['Corriente total que consume el bus. Durante el arranque supera los 200 A por el motor de arranque.',
+       'Muchas aeronaves usan en su lugar un amperímetro de batería, que indica si la batería se carga (+) o se descarga (−).'],
+    s:'Aquí se muestra la carga total del bus, no la corriente de la batería.'},
+  lowv:{t:'Alerta LOW VOLTS',
+    b:['Se enciende cuando la tensión del bus cae por debajo de un umbral (aprox. 24 V en sistemas de 28 V).',
+       'En vuelo suele indicar que el alternador dejó de cargar y que todo se está alimentando de la batería. Durante el arranque es normal que se encienda.']},
+  annstart:{t:'Alerta STARTER',
+    b:['Indica que el motor de arranque está energizado.',
+       'Si sigue encendida después del arranque, el solenoide quedó pegado: hay que apagar el motor de inmediato para evitar daños al arrancador.']},
+  annalt:{t:'Alerta ALT OUT',
+    b:['El alternador no está generando cuando debería. Hay que reducir los consumos eléctricos, porque la batería alimenta todo y se irá descargando.'],
+    s:'Se enciende con ALT ON sin generación, o con el motor en marcha y ALT en OFF.'},
+  annrun:{t:'Indicador ENG RUN',
+    b:['Indicador propio del simulador: el motor mantiene combustión por sí mismo (ya no depende del motor de arranque).']},
+  lowbat:{t:'Falla: batería descargada',
+    b:['Simula una batería con poca carga. Bajo la enorme demanda del arranque su tensión se desploma, el motor de arranque gira muy lento y no se alcanzan las RPM para que el motor encienda.',
+       'Síntoma típico: giro lento y pesado, luces que se atenúan y LOW VOLTS encendida.']},
+  solfail:{t:'Falla: contactos del solenoide abiertos',
+    b:['La bobina del solenoide funciona (se escucha el clic) pero los contactos de potencia no cierran, por contactos quemados o un cable grueso flojo o dañado.',
+       'Síntoma típico: “clic sin giro”.']}
+};
+
+const popEl=$('pop'), popT=$('popT'), popB=$('popB');
+let popSrc=null;
+function showPop(el){
+  const d=GLOSS[el.dataset.g]; if(!d) return;
+  if(popSrc===el && !popEl.hidden){ hidePop(); return; }
+  if(popSrc) popSrc.classList.remove('active');
+  popSrc=el; el.classList.add('active');
+  popT.textContent=d.t;
+  popB.innerHTML=d.b.map(p=>`<p>${p}</p>`).join('')+(d.s?`<div class="sim"><b>En el simulador:</b> ${d.s}</div>`:'');
+  popEl.hidden=false;
+  popEl.classList.remove('show'); void popEl.offsetWidth; popEl.classList.add('show');
+  const r=el.getBoundingClientRect(), pw=popEl.offsetWidth, ph=popEl.offsetHeight, m=12;
+  let x=r.left+r.width/2-pw/2; x=Math.max(m,Math.min(x,innerWidth-pw-m));
+  let y=r.bottom+10; if(y+ph>innerHeight-m) y=r.top-ph-10; if(y<m) y=m;
+  popEl.style.left=x+'px'; popEl.style.top=y+'px';
+}
+function hidePop(){
+  popEl.hidden=true;
+  if(popSrc){ popSrc.classList.remove('active'); popSrc=null; }
+}
+$('popX').addEventListener('click',hidePop);
+// Captura: el punto de info no acciona el interruptor/checkbox que lo contiene
+document.addEventListener('click',e=>{
+  const t=e.target.closest && e.target.closest('[data-g]');
+  if(t){ e.preventDefault(); e.stopPropagation(); showPop(t); return; }
+  if(!popEl.hidden && !popEl.contains(e.target)) hidePop();
+},true);
+document.addEventListener('contextmenu',e=>{ if(e.target.closest && e.target.closest('[data-g]')){e.preventDefault();e.stopPropagation();} },true);
+window.addEventListener('resize',hidePop);
+window.addEventListener('scroll',hidePop);
+
+function buildDiagramDots(){
+  const NS='http://www.w3.org/2000/svg', svg=$('schem');
+  const DOTS=[['source',132,156],['batsol',312,168],['main',440,29],['stsol',582,58],['stmot',767,50],
+    ['av',582,168],['avbus',712,314],['loads',830,162],['altgen',548,254],['key',152,348],
+    ['mag',304,350],['mag',304,400],['plead',240,356],['ht',444,357],['plugs',572,358],
+    ['eng',752,358],['cmd',380,12],['bendix',890,168]];
+  DOTS.forEach(([gk,x,y])=>{
+    const gEl=document.createElementNS(NS,'g');
+    gEl.setAttribute('class','idot'); gEl.setAttribute('data-g',gk);
+    gEl.setAttribute('transform',`translate(${x} ${y})`);
+    gEl.setAttribute('tabindex','0'); gEl.setAttribute('role','button');
+    const c=document.createElementNS(NS,'circle'); c.setAttribute('r','7.5');
+    const tx=document.createElementNS(NS,'text'); tx.setAttribute('text-anchor','middle'); tx.setAttribute('y','3.5'); tx.textContent='i';
+    gEl.appendChild(c); gEl.appendChild(tx); svg.appendChild(gEl);
+  });
+}
+
+/* ---------- Reset ---------- */
+function reset(){
+  Object.assign(S,{bat:false,alt:false,av:false,key:0,rpm:0,running:false,flare:0,startT:0,crankT:0,catchT:null,
+    startedRunning:false,volts:0,amps:0,lowVolts:false,prev:null});
+  S.lowBat=$('fLowBat').checked; S.solFail=$('fSol').checked;
+  renderSwitches(); renderKey();
+  log('[SYS] Sistema reiniciado: todos los interruptores en OFF, motor detenido.','sys');
+}
+
+/* =====================================================================
+   EVENTOS
+   ===================================================================== */
+document.querySelectorAll('.tgl').forEach(b=>b.addEventListener('click',()=>toggleSw(b.dataset.sw)));
+knob.addEventListener('click',()=>{audioInit(); setKey(S.key>=KEY.length-1?0:S.key+1);});
+knob.addEventListener('contextmenu',e=>{e.preventDefault(); audioInit(); setKey(S.key-1);});
+keywrap.addEventListener('wheel',e=>{e.preventDefault(); audioInit(); setKey(S.key+(e.deltaY>0?1:-1));},{passive:false});
+$('keyPrev').addEventListener('click',()=>{audioInit(); setKey(S.key-1);});
+$('keyNext').addEventListener('click',()=>{audioInit(); setKey(S.key+1);});
+$('btnClear').addEventListener('click',()=>{con.innerHTML=''; addCursor();});
+$('btnReset').addEventListener('click',()=>{audioInit(); reset();});
+$('btnAudio').addEventListener('click',e=>{
+  A.on=!A.on; audioInit();
+  if(A.master) A.master.gain.setTargetAtTime(A.on?0.8:0,A.ctx.currentTime,0.05);
+  e.currentTarget.classList.toggle('on',A.on);
+  e.currentTarget.textContent = A.on?'♪ AUDIO ON':'♪ AUDIO OFF';
+  log(`[SYS] Audio ${A.on?'activado':'silenciado'}.`,'sys');
+});
+$('fLowBat').addEventListener('change',e=>{
+  S.lowBat=e.target.checked;
+  log(S.lowBat?'[FALLA] Inyectada: batería descargada (23.0 V en reposo).':'[FALLA] Retirada: batería con carga nominal.', S.lowBat?'err':'ok');
+});
+$('fSol').addEventListener('change',e=>{
+  S.solFail=e.target.checked;
+  log(S.solFail?'[FALLA] Inyectada: contactos de potencia del solenoide de arranque abiertos.':'[FALLA] Retirada: solenoide de arranque operativo.', S.solFail?'err':'ok');
+});
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ hidePop(); return; }
+  if(e.target.closest && e.target.closest('[data-g]')){
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); showPop(e.target.closest('[data-g]')); }
+    return;
+  }
+  if(e.target.tagName==='INPUT') return;
+  audioInit();
+  const k=e.key.toLowerCase();
+  if(e.key==='ArrowRight'){e.preventDefault(); setKey(S.key+1);}
+  else if(e.key==='ArrowLeft'){e.preventDefault(); setKey(S.key-1);}
+  else if(k==='b') toggleSw('bat');
+  else if(k==='a') toggleSw('alt');
+  else if(k==='v') toggleSw('av');
+  else if(k==='s') setKey(4);
+});
+window.addEventListener('pointerdown',audioInit,{once:true});
+
+/* =====================================================================
+   ARRANQUE DEL SIMULADOR
+   ===================================================================== */
+buildFlows(); buildKeyLabels(); buildTach(); buildDiagramDots(); renderSwitches(); renderKey(); addCursor();
+log('[SYS] Simulador de sistema eléctrico 28V DC iniciado.','sys');
+log('[SYS] Autoprueba: buses, solenoides y encendido en estado de reposo — OK.','ok');
+log('[SYS] Secuencia sugerida: BAT ON → llave BOTH → START → ALT ON → AVIONICS ON. Pruebe también R / L con el motor en marcha.','info');
+log('[SYS] Atajos: B (BAT) · A (ALT) · V (AVIONICS) · S (START) · ← → (llave).','sys');
+log('[SYS] Toque los puntos (i) junto a cada elemento para ver qué es y cómo funciona.','info');
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  step(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
